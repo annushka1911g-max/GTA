@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌴</text></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0" />
+    <title>Grand Theft Auto: Vice City - Web Edition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Yellowtail&family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&family=Teko:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/style.css">
+  </head>
+  <body>
+    <div id="game-container">
+      <!-- 3D WebGL Canvas -->
+      <canvas id="webgl-canvas"></canvas>
+
+      <!-- Target Crosshair -->
+      <div id="crosshair"></div>
+
+      <!-- Action Prompt (e.g. "[F] ENTER INFERNUS") -->
+      <div id="action-prompt" class="action-prompt hidden">
+        <span class="prompt-key">F</span> <span id="prompt-text">ENTER VEHICLE</span>
+      </div>
+
+      <!-- Top Right HUD: Cash, Wanted Level & Active Weapon -->
+      <div id="top-right-hud">
+        <div class="hud-cash-container">
+          <span class="cash-dollar">$</span><span id="hud-cash">00125000</span>
+        </div>
+        <div id="wanted-stars" class="wanted-stars">
+          <span class="star" data-index="1">★</span>
+          <span class="star" data-index="2">★</span>
+          <span class="star" data-index="3">★</span>
+          <span class="star" data-index="4">★</span>
+          <span class="star" data-index="5">★</span>
+        </div>
+        <div class="hud-weapon-card">
+          <div class="weapon-preview" id="weapon-preview">
+            <span id="weapon-icon">👊</span>
+          </div>
+          <div class="weapon-details">
+            <div id="weapon-name">FISTS</div>
+            <div id="weapon-ammo">∞</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vehicle Speedometer HUD (Vice City Neon Style) -->
+      <div id="vehicle-hud" class="vehicle-hud hidden">
+        <div class="vehicle-header">
+          <span class="vehicle-brand" id="vehicle-model-name">INFERNUS</span>
+          <span class="gear-badge" id="gear-indicator">D1</span>
+        </div>
+        <div class="speed-cluster">
+          <div class="speed-value" id="speed-value">0</div>
+          <div class="speed-unit">MPH</div>
+        </div>
+        <div class="rpm-bar-container">
+          <div class="rpm-bar-fill" id="rpm-bar-fill"></div>
+        </div>
+        <div class="radio-badge" id="radio-badge">
+          <span class="radio-icon">📻</span> <span id="radio-station-name">FLASH FM - 80s POP</span>
+        </div>
+      </div>
+
+      <!-- Bottom-Left Radar & Vice City Health/Armor Status -->
+      <div id="bottom-left-hud">
+        <div class="location-label" id="location-label">OCEAN BEACH, OCEAN DRIVE</div>
+        <div class="radar-wrapper">
+          <canvas id="radar-canvas" width="160" height="160"></canvas>
+          <div class="compass-north">N</div>
+          <div class="player-arrow"></div>
+        </div>
+        <div class="bars-container">
+          <div class="stat-row">
+            <span class="stat-icon heart">♥</span>
+            <div class="status-bar health-bar">
+              <div class="bar-fill" id="health-fill" style="width: 100%;"></div>
+            </div>
+            <span class="stat-number" id="health-num">100</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-icon shield">🛡</span>
+            <div class="status-bar armor-bar">
+              <div class="bar-fill" id="armor-fill" style="width: 100%;"></div>
+            </div>
+            <span class="stat-number" id="armor-num">100</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-icon stamina">⚡</span>
+            <div class="status-bar stamina-bar">
+              <div class="bar-fill" id="stamina-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weapon Quick Switcher Bar (1: Fists, 2: Bat, 3: Pistol) -->
+      <div id="weapon-switcher" class="weapon-switcher">
+        <button class="weapon-btn active" data-slot="0">
+          <span class="btn-slot">1</span> 👊 FISTS
+        </button>
+        <button class="weapon-btn" data-slot="1">
+          <span class="btn-slot">2</span> 🏏 BAT
+        </button>
+        <button class="weapon-btn" data-slot="2">
+          <span class="btn-slot">3</span> 🔫 COLT .45
+        </button>
+      </div>
+
+      <!-- Controls & Quick Guide overlay -->
+      <div id="controls-help" class="controls-panel hidden">
+        <div class="controls-header">
+          <div class="vc-logo-container">
+            <span class="logo-gta">Grand Theft Auto</span>
+            <span class="logo-vice-city">Vice City</span>
+          </div>
+          <button id="close-help-btn" class="close-btn">✕</button>
+        </div>
+        <div class="controls-columns">
+          <div class="control-col">
+            <h3>🌴 TOMMY VERCETTI (ON FOOT)</h3>
+            <ul>
+              <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move & Smooth Strafe</li>
+              <li><kbd>SHIFT</kbd> Athletic Sprint</li>
+              <li><kbd>SPACE</kbd> Dynamic Jump</li>
+              <li><kbd>F</kbd> / <kbd>ENTER</kbd> <strong>Hijack / Enter Car</strong></li>
+              <li><kbd>LEFT CLICK</kbd> <strong>Attack / Punch Combo / Shoot</strong></li>
+              <li><kbd>RIGHT CLICK</kbd> Aim Camera Stance</li>
+              <li><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> Switch Weapons (Fists / Bat / Pistol)</li>
+              <li><kbd>MOUSE</kbd> Smooth 360° Orbit Look</li>
+            </ul>
+          </div>
+          <div class="control-col">
+            <h3>🏎️ VICE CITY DRIVING</h3>
+            <ul>
+              <li><kbd>W</kbd> Accelerate / V8 Throttle</li>
+              <li><kbd>S</kbd> Brake & Smooth Reverse</li>
+              <li><kbd>A</kbd><kbd>D</kbd> Responsive Power Steering</li>
+              <li><kbd>SPACE</kbd> <strong>Handbrake Drifting / Power-slide</strong></li>
+              <li><kbd>F</kbd> Exit Vehicle</li>
+              <li><kbd>H</kbd> 80s Horn / Police Siren</li>
+              <li><kbd>Q</kbd> / <kbd>E</kbd> Switch 80s Radio Stations</li>
+              <li><kbd>C</kbd> Camera View / Distance</li>
+              <li><kbd>R</kbd> Flip Car Upright / Respawn</li>
+            </ul>
+          </div>
+        </div>
+        <div class="controls-footer">
+          <span>Click anywhere to lock mouse. Press <kbd>ESC</kbd> to unlock. Press <kbd>H</kbd> or <kbd>TAB</kbd> to toggle controls.</span>
+        </div>
+      </div>
+
+      <!-- Help Toggle Button -->
+      <button id="toggle-help-btn" class="help-pill-btn">Controls [H/TAB]</button>
+
+      <!-- Center Start / Click to Play Overlay (Vice City 80s Theme) -->
+      <div id="start-overlay" class="start-overlay">
+        <div class="start-card">
+          <div class="vice-city-hero">
+            <div class="vc-top-brand">GRAND THEFT AUTO</div>
+            <h1 class="vc-title">Vice City</h1>
+            <div class="vc-edition-tag">WEB 3D REMASTER</div>
+          </div>
+          <div class="features-summary">
+            <div class="feat-badge">🌴 Ocean Beach & Ocean Drive</div>
+            <div class="feat-badge">🏎️ Infernus, Cheetah & Retro Cars</div>
+            <div class="feat-badge">👔 Tommy Vercetti & 3-Hit Combos</div>
+            <div class="feat-badge">📻 Flash FM & Wave 103 80s Synth</div>
+          </div>
+          <button id="start-btn" class="start-game-btn">START GAME</button>
+          <div class="start-tip">Click to play in fullscreen with 80s Synth Radio & Drifting</div>
+        </div>
+      </div>
+
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
