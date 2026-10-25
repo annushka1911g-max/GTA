@@ -217,17 +217,23 @@ The optimized bundle will be compiled to the `dist/` directory.
 
 ---
 
-## 🛣️ Roadmap & Planned Enhancements
+## 🛣️ Roadmap & Milestones
 
-- [x] Full Tommy Vercetti anatomical rig & procedural animations
-- [x] Raycast vehicle suspension physics with handbrake drifting
-- [x] Authentic 80s Miami Ocean Drive, Art Deco hotels & sandy beach
-- [x] Procedural Web Audio engine & 80s synth radio stations
-- [x] Real-time circular radar minimap HUD
-- [ ] Pedestrian AI system with pathfinding and ragdoll physics
-- [ ] Police chase AI dispatch at higher Wanted levels (2-5 stars)
-- [ ] Driveable motorcycles (PCJ-600) and helicopters (Maverick)
-- [ ] Expandable story missions & checkpoint marker system
+- [x] Full player anatomical rig & procedural swagger animations (walk, sprint, jump, aim, 3-hit combo)
+- [x] Raycast vehicle suspension physics with anti-roll bar and handbrake power-slide drifting
+- [x] Authentic 80s Miami Ocean Drive, Art Deco hotels, neon signs & sandy beach
+- [x] Procedural Web Audio engine & 80s synth radio stations (*Flash FM*, *Wave 103*, *Fever 105*)
+- [x] Real-time circular radar minimap HUD with compass, road paths, and waypoint tracking
+- [x] Pedestrian AI system with sidewalk navigation graph, crowd panic, combat reactions, and knockout cash drops
+- [x] Autonomous traffic vehicle AI with lane following, collision avoidance, and seamless carjacking
+- [x] Police pursuit & 5-Star Wanted System with siren wailing, high-speed ramming, BUSTED arrest and WASTED recovery
+- [x] Reusable Mission framework with 3 complete playable original missions (*The First Delivery*, *Coastal Getaway*, *Night Shift*)
+- [x] 24-Hour dynamic Day/Night cycle with sunset, sunrise, midday tropical sun, and glowing neon night
+- [x] 3D rotating collectible pickups (Cash briefcases, Health hearts, Armor shields, Ammunition boxes)
+- [x] Persistent Save/Load system (`SaveManager`) with auto-save and reset
+- [x] In-game Pause menu (`ESC`) with resume, save game, controls guide, and time-of-day selector
+- [ ] Drivable motorcycles and speedboats
+- [ ] Additional city districts (Airport, Industrial Docks, Golf Club)
 
 ---
 
@@ -235,4 +241,4 @@ The optimized bundle will be compiled to the `dist/` directory.
 
 This project is released under the **[MIT License](LICENSE)**. 
 
-*Inspired by the legendary game **Grand Theft Auto: Vice City** originally developed by Rockstar Games. This project is an independent educational WebGL recreation built for pairs of modern graphics and physics exploration.*
+*Inspired by the atmosphere, aesthetic, and gameplay systems of classic 1980s Miami open-world action games. Built strictly as an independent, original WebGL simulation.*

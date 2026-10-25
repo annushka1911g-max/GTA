@@ -5,6 +5,13 @@ import { City } from './world/City';
 import { Player, PlayerState, WeaponType } from './entities/Player';
 import { Vehicle, VehicleConfig } from './entities/Vehicle';
 import { HUD } from './ui/HUD';
+import { DayNightCycle } from './world/DayNightCycle';
+import { SaveManager, GameSaveData } from './save/SaveManager';
+import { PedestrianManager } from './ai/PedestrianManager';
+import { TrafficManager } from './ai/TrafficManager';
+import { PoliceSystem } from './ai/PoliceSystem';
+import { MissionManager } from './missions/MissionManager';
+import { CollectiblesManager } from './world/CollectiblesManager';
 
 class Game {
   private canvas: HTMLCanvasElement;
@@ -18,17 +25,32 @@ class Game {
   private player: Player;
   private hud: HUD;
 
+  // Systems
+  private dayNight: DayNightCycle;
+  private pedManager: PedestrianManager;
+  private trafficManager: TrafficManager;
+  private policeSystem: PoliceSystem;
+  private missionManager: MissionManager;
+  private collectiblesManager: CollectiblesManager;
+
+  // Parked & Free Roam Vehicles
   private vehicles: Vehicle[] = [];
   private nearbyVehicle: Vehicle | null = null;
+
+  // Game Economy & State
+  private cash = 2500;
+  private isPaused = false;
+  private isGameOver = false;
 
   private lastTime = performance.now();
   private isPointerLocked = false;
   private isGameStarted = false;
+  private autoSaveTimer = 0;
 
   constructor() {
     this.canvas = document.getElementById('webgl-canvas') as HTMLCanvasElement;
 
-    // 1. Renderer with ACES Filmic Tone Mapping for vibrant 80s neon glow
+    // 1. WebGL Renderer with ACES Filmic Tone Mapping for vibrant 80s neon glow
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
@@ -41,82 +63,203 @@ class Game {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.25;
 
-    // 2. 1980s Miami Sunset Sky & Atmosphere
+    // 2. Scene & Fog
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0xf472b6); // Vibrant 80s pink sunset sky
-    this.scene.fog = new THREE.FogExp2(0xfbcfe8, 0.0032); // Miami tropical haze
+    this.scene.background = new THREE.Color(0xf472b6);
+    this.scene.fog = new THREE.FogExp2(0xfbcfe8, 0.0032);
 
     // 3. Camera
     this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 900);
 
-    // 4. Miami Golden Hour Sunset Lighting
-    this.setupViceCityLighting();
+    // 4. Dynamic 24h Miami Day/Night Atmosphere
+    this.dayNight = new DayNightCycle(this.scene);
 
     // 5. Physics & Audio
     this.physics = new PhysicsWorld();
     this.audio = new AudioManager();
 
-    // 6. Vice City (Ocean Drive, Beach, Art Deco Hotels)
+    // 6. Tropical Metropolis (Ocean Drive, Art Deco Hotels, Beach, Palm Boulevard)
     this.city = new City(this.scene, this.physics);
 
-    // 7. Tommy Vercetti Character
+    // 7. Player Character (Articulated Rig, Combat, Camera)
     this.player = new Player(this.scene, this.physics, this.audio, this.camera);
 
     // 8. HUD & Radar
     this.hud = new HUD();
 
-    // 9. Spawn Fleet of Vice City Vehicles
-    this.spawnViceCityVehicles();
+    // 9. AI Systems: Pedestrians, Traffic, Police
+    this.pedManager = new PedestrianManager(this.scene, this.physics, this.city);
+    this.trafficManager = new TrafficManager(this.scene, this.physics, this.audio, this.city);
+    this.policeSystem = new PoliceSystem(this.scene, this.physics, this.audio, this.city);
 
-    // 10. Inputs & UI
+    // 10. Missions & Collectibles
+    this.missionManager = new MissionManager(this.scene, this.audio, this.policeSystem);
+    this.collectiblesManager = new CollectiblesManager(this.scene, this.audio);
+
+    // 11. Parked Vice City Vehicles fleet
+    this.spawnParkedVehicles();
+
+    // 12. Load Persistent Save Data
+    this.loadSavedGame();
+
+    // 13. Wire Callbacks & Events
+    this.setupCombatAndCrimeCallbacks();
+    this.setupMissionCallbacks();
+    this.setupDeathAndArrestCallbacks();
+
+    // 14. Inputs & Menus
     this.setupInputs();
     this.setupUI();
 
-    // 11. Start Loop
+    // 15. Start Loop
     requestAnimationFrame(this.animate.bind(this));
   }
 
-  /**
-   * 1980s Miami Golden Hour Sunset Lighting
-   */
-  private setupViceCityLighting(): void {
-    // Warm magenta & cyan hemisphere bounce
-    const hemiLight = new THREE.HemisphereLight(0xf43f5e, 0x06b6d4, 0.7);
-    this.scene.add(hemiLight);
+  private loadSavedGame(): void {
+    const save = SaveManager.load();
+    this.cash = save.cash;
+    this.hud.setCash(this.cash);
+    this.player.health = save.health;
+    this.player.armor = save.armor;
+    this.player.stamina = save.stamina;
+    this.player.pistolAmmo = save.pistolAmmo;
+    this.player.setWeapon(save.currentWeapon);
 
-    // Low angle golden sun casting dramatic palm tree shadows across Ocean Drive
-    const sunLight = new THREE.DirectionalLight(0xfbbf24, 1.6);
-    sunLight.position.set(140, 110, 80);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 10;
-    sunLight.shadow.camera.far = 400;
-
-    const d = 90;
-    sunLight.shadow.camera.left = -d;
-    sunLight.shadow.camera.right = d;
-    sunLight.shadow.camera.top = d;
-    sunLight.shadow.camera.bottom = -d;
-    sunLight.shadow.bias = -0.0004;
-
-    this.scene.add(sunLight);
-
-    // Subtle neon pink fill light from the Art Deco facades
-    const neonFill = new THREE.DirectionalLight(0xff007f, 0.45);
-    neonFill.position.set(-100, 60, -60);
-    this.scene.add(neonFill);
+    if (save.completedMissions && save.completedMissions.length > 0) {
+      for (const mId of save.completedMissions) {
+        this.missionManager.completedMissionIds.add(mId);
+      }
+    }
   }
 
-  /**
-   * Spawns iconic Vice City vehicles: Infernus, Cheetah, Ocean Cruiser, VCPD, Kaufman Cab
-   */
-  private spawnViceCityVehicles(): void {
+  private saveCurrentGame(): void {
+    const saveData: GameSaveData = {
+      version: 1,
+      cash: this.cash,
+      health: this.player.health,
+      armor: this.player.armor,
+      stamina: this.player.stamina,
+      position: {
+        x: this.player.body.position.x,
+        y: this.player.body.position.y,
+        z: this.player.body.position.z,
+      },
+      completedMissions: Array.from(this.missionManager.completedMissionIds),
+      activeMissionId: this.missionManager.activeMission ? this.missionManager.activeMission.id : null,
+      currentWeapon: this.player.currentWeapon,
+      pistolAmmo: this.player.pistolAmmo,
+      settings: {
+        soundVolume: 0.8,
+        radioVolume: 0.7,
+        mouseSensitivity: 1.0,
+        dayNightSpeed: this.dayNight.timeSpeed,
+      },
+    };
+
+    if (SaveManager.save(saveData)) {
+      this.hud.showToast('💾 GAME PROGRESS SAVED', 2500);
+    }
+  }
+
+  private setupCombatAndCrimeCallbacks(): void {
+    // When player punches or shoots, perform hit detection against pedestrians
+    this.player.onAttackCallback = (pos, yaw, weapon) => {
+      const hitPed = this.pedManager.handlePlayerAttack(pos, yaw, weapon);
+      if (hitPed) {
+        // Attacking pedestrians generates wanted level
+        this.policeSystem.addCrime(1);
+      } else if (weapon === 'pistol') {
+        // Gunfire in public attracts police attention
+        if (Math.random() < 0.4) {
+          this.policeSystem.addCrime(1);
+        }
+      }
+    };
+
+    // When a pedestrian is knocked out, drop cash on the ground!
+    this.pedManager.setOnPedestrianDefeated((_ped, pos) => {
+      const reward = 40 + Math.floor(Math.random() * 80);
+      this.collectiblesManager.createCollectible(
+        `drop_${Date.now()}_${Math.random()}`,
+        'cash',
+        reward,
+        new THREE.Vector3(pos.x, 0.6, pos.z)
+      );
+      this.policeSystem.addCrime(1);
+    });
+  }
+
+  private setupMissionCallbacks(): void {
+    this.missionManager.setCallbacks(
+      (mission) => {
+        this.hud.showToast(`🎯 MISSION STARTED: ${mission.title}`, 3500);
+      },
+      (mission, reward) => {
+        this.cash += reward;
+        this.hud.setCash(this.cash);
+        this.policeSystem.clearWanted();
+        this.hud.showMissionBanner('MISSION PASSED!', `REWARD: +$${reward.toLocaleString()}`, true);
+        this.saveCurrentGame();
+      },
+      (mission, reason) => {
+        this.hud.showMissionBanner('MISSION FAILED', reason || 'Objective was not fulfilled', false);
+      },
+      (stepDesc) => {
+        this.hud.showToast(`Objective: ${stepDesc}`, 3000);
+      }
+    );
+  }
+
+  private setupDeathAndArrestCallbacks(): void {
+    this.policeSystem.setCallbacks(
+      // BUSTED
+      () => {
+        if (this.isGameOver) return;
+        this.isGameOver = true;
+        this.hud.showBustedScreen(true);
+        if (document.pointerLockElement) document.exitPointerLock();
+
+        // Bail deduction and clear weapons
+        this.cash = Math.max(0, this.cash - 500);
+        this.hud.setCash(this.cash);
+        this.player.pistolAmmo = 0;
+        this.player.setWeapon('fists');
+        this.policeSystem.clearWanted();
+
+        setTimeout(() => {
+          this.hud.showBustedScreen(false);
+          this.player.respawn(new THREE.Vector3(-25, 0.5, 30)); // VCPD Station
+          this.isGameOver = false;
+          this.hud.showToast('Released from Sun Bay Police Station', 3000);
+        }, 4000);
+      },
+      // WASTED
+      () => {
+        if (this.isGameOver) return;
+        this.isGameOver = true;
+        this.hud.showWastedScreen(true);
+        if (document.pointerLockElement) document.exitPointerLock();
+
+        this.cash = Math.max(0, this.cash - 500);
+        this.hud.setCash(this.cash);
+        this.policeSystem.clearWanted();
+
+        setTimeout(() => {
+          this.hud.showWastedScreen(false);
+          this.player.respawn(new THREE.Vector3(120, 0.5, -40)); // Ocean View Medical
+          this.isGameOver = false;
+          this.hud.showToast('Discharged from Ocean View Medical Center', 3000);
+        }, 4000);
+      }
+    );
+  }
+
+  private spawnParkedVehicles(): void {
     const configs: Record<string, VehicleConfig> = {
       infernus: {
         type: 'infernus',
         name: 'INFERNUS',
-        bodyColor: 0xf8fafc, // Iconic white 80s Countach
+        bodyColor: 0xf8fafc,
         mass: 1250,
         engineForce: 3800,
         maxSteer: 0.52,
@@ -125,16 +268,16 @@ class Game {
       cheetah: {
         type: 'cheetah',
         name: 'CHEETAH',
-        bodyColor: 0x00f0ff, // Electric Miami cyan Testarossa
+        bodyColor: 0x00f0ff,
         mass: 1300,
         engineForce: 4200,
-        maxSteer: 0.50,
+        maxSteer: 0.5,
         brakeForce: 110,
       },
       cruiser: {
         type: 'cruiser',
         name: 'OCEAN VIEW CRUISER',
-        bodyColor: 0xff007f, // Hot pink retro convertible
+        bodyColor: 0xff007f,
         mass: 1500,
         engineForce: 3200,
         maxSteer: 0.46,
@@ -143,7 +286,7 @@ class Game {
       police: {
         type: 'police',
         name: 'VCPD SQUAD CAR',
-        bodyColor: 0x15803d, // Green & White VCPD squad car
+        bodyColor: 0x15803d,
         mass: 1600,
         engineForce: 3500,
         maxSteer: 0.48,
@@ -152,7 +295,7 @@ class Game {
       taxi: {
         type: 'taxi',
         name: 'KAUFMAN CAB',
-        bodyColor: 0xfacc15, // Yellow checkered taxi
+        bodyColor: 0xfacc15,
         mass: 1550,
         engineForce: 3100,
         maxSteer: 0.47,
@@ -160,69 +303,34 @@ class Game {
       },
     };
 
-    // 1. Infernus right in front of Tommy Vercetti
-    const v1 = new Vehicle(
-      this.scene,
-      this.physics,
-      this.audio,
-      configs.infernus,
-      new THREE.Vector3(6, 0.5, 8),
-      0
-    );
+    // 1. Infernus right outside Ocean View Hotel
+    const v1 = new Vehicle(this.scene, this.physics, this.audio, configs.infernus, new THREE.Vector3(6, 0.5, 8), 0);
     this.vehicles.push(v1);
 
-    // 2. Cyan Cheetah on Ocean Drive
-    const v2 = new Vehicle(
-      this.scene,
-      this.physics,
-      this.audio,
-      configs.cheetah,
-      new THREE.Vector3(120, 0.5, 40),
-      Math.PI / 2
-    );
+    // 2. Cyan Cheetah on Ocean Drive Boulevard
+    const v2 = new Vehicle(this.scene, this.physics, this.audio, configs.cheetah, new THREE.Vector3(120, 0.5, 40), Math.PI / 2);
     this.vehicles.push(v2);
 
     // 3. Hot Pink Convertible by the Art Deco Hotel
-    const v3 = new Vehicle(
-      this.scene,
-      this.physics,
-      this.audio,
-      configs.cruiser,
-      new THREE.Vector3(75, 0.5, -20),
-      0
-    );
+    const v3 = new Vehicle(this.scene, this.physics, this.audio, configs.cruiser, new THREE.Vector3(75, 0.5, -20), 0);
     this.vehicles.push(v3);
 
-    // 4. VCPD Police Cruiser at the intersection
-    const v4 = new Vehicle(
-      this.scene,
-      this.physics,
-      this.audio,
-      configs.police,
-      new THREE.Vector3(-25, 0.5, 30),
-      -Math.PI / 2
-    );
-    this.vehicles.push(v4);
-
-    // 5. Kaufman Cab
-    const v5 = new Vehicle(
-      this.scene,
-      this.physics,
-      this.audio,
-      configs.taxi,
-      new THREE.Vector3(-50, 0.5, -60),
-      Math.PI
-    );
+    // 4. Kaufman Cab in commercial district
+    const v5 = new Vehicle(this.scene, this.physics, this.audio, configs.taxi, new THREE.Vector3(-50, 0.5, -60), Math.PI);
     this.vehicles.push(v5);
   }
 
-  /**
-   * Keyboard, Mouse & Weapon Inputs
-   */
   private setupInputs(): void {
     const keysDown = new Set<string>();
 
     window.addEventListener('keydown', (e) => {
+      // Escape: Toggle Pause Menu
+      if (e.code === 'Escape' && this.isGameStarted && !this.isGameOver) {
+        e.preventDefault();
+        this.togglePauseMenu();
+        return;
+      }
+
       keysDown.add(e.code);
 
       // F or Enter: Enter or Exit Vehicle
@@ -230,7 +338,9 @@ class Game {
         if (this.player.state === PlayerState.ON_FOOT) {
           if (this.nearbyVehicle) {
             this.player.enterVehicle(this.nearbyVehicle);
-            this.hud.setWantedLevel(1);
+            // Carjacking increases police attention
+            this.policeSystem.addCrime(1);
+            this.hud.showToast(`Vehicle Hijacked: ${this.nearbyVehicle.config.name}`, 2000);
           }
         } else {
           this.player.exitVehicle();
@@ -308,7 +418,7 @@ class Game {
 
     // Pointer Lock & Mouse Look
     this.canvas.addEventListener('click', () => {
-      if (!this.isPointerLocked && this.isGameStarted) {
+      if (!this.isPointerLocked && this.isGameStarted && !this.isPaused && !this.isGameOver) {
         this.canvas.requestPointerLock();
       }
     });
@@ -318,17 +428,17 @@ class Game {
     });
 
     window.addEventListener('mousemove', (e) => {
-      if (this.isPointerLocked) {
+      if (this.isPointerLocked && !this.isPaused) {
         this.player.onMouseMove(e.movementX, e.movementY);
       }
     });
 
     // Left Click: Attack (Punch combo, bat swing, gunshot)
     window.addEventListener('mousedown', (e) => {
-      if (e.button === 0 && this.isPointerLocked) {
+      if (e.button === 0 && this.isPointerLocked && !this.isPaused) {
         this.player.triggerAttack();
       }
-      if (e.button === 2) {
+      if (e.button === 2 && !this.isPaused) {
         this.player.isAiming = true;
         document.getElementById('crosshair')?.classList.add('aiming');
       }
@@ -352,6 +462,8 @@ class Game {
 
     // Process continuous inputs
     this.processInputs = () => {
+      if (this.isPaused || this.isGameOver) return;
+
       const w = keysDown.has('KeyW') || keysDown.has('ArrowUp');
       const s = keysDown.has('KeyS') || keysDown.has('ArrowDown');
       const a = keysDown.has('KeyA') || keysDown.has('ArrowLeft');
@@ -373,9 +485,6 @@ class Game {
 
   private processInputs: () => void = () => {};
 
-  /**
-   * UI Setup (Start Screen, Controls Panel, Weapon Switcher buttons)
-   */
   private setupUI(): void {
     const startOverlay = document.getElementById('start-overlay')!;
     const startBtn = document.getElementById('start-btn')!;
@@ -383,11 +492,13 @@ class Game {
     const closeHelpBtn = document.getElementById('close-help-btn')!;
     const toggleHelpBtn = document.getElementById('toggle-help-btn')!;
 
+    // Start Screen
     startBtn.addEventListener('click', () => {
       this.audio.init();
       startOverlay.classList.add('hidden');
       this.isGameStarted = true;
       this.canvas.requestPointerLock();
+      this.hud.showToast('🌴 WELCOME TO SUN BAY • VICE CITY REMASTER', 4000);
     });
 
     closeHelpBtn.addEventListener('click', () => {
@@ -398,7 +509,52 @@ class Game {
       this.toggleHelpModal();
     });
 
-    // Weapon switcher button click listeners
+    // Pause Menu actions
+    const pauseMenu = document.getElementById('pause-menu')!;
+    const resumeBtn = document.getElementById('pause-resume-btn')!;
+    const saveBtn = document.getElementById('pause-save-btn')!;
+    const controlsBtn = document.getElementById('pause-controls-btn')!;
+    const resetBtn = document.getElementById('pause-reset-btn')!;
+    const restartMissionBtn = document.getElementById('pause-restart-mission-btn')!;
+
+    resumeBtn.addEventListener('click', () => {
+      this.togglePauseMenu();
+      this.canvas.requestPointerLock();
+    });
+
+    saveBtn.addEventListener('click', () => {
+      this.saveCurrentGame();
+    });
+
+    controlsBtn.addEventListener('click', () => {
+      pauseMenu.classList.add('hidden');
+      controlsHelp.classList.remove('hidden');
+    });
+
+    resetBtn.addEventListener('click', () => {
+      if (confirm('Are you sure you want to reset all game progress?')) {
+        SaveManager.reset();
+        window.location.reload();
+      }
+    });
+
+    restartMissionBtn.addEventListener('click', () => {
+      this.missionManager.restartMission();
+      this.togglePauseMenu();
+      this.canvas.requestPointerLock();
+    });
+
+    // Time of day buttons in pause menu
+    const timeButtons = document.querySelectorAll('.pause-time-picker .time-btn');
+    timeButtons.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const hour = parseFloat((e.target as HTMLElement).getAttribute('data-hour') || '12');
+        this.dayNight.setTime(hour);
+        this.hud.showToast(`Time set to ${this.dayNight.getFormattedTime()}`, 2000);
+      });
+    });
+
+    // Weapon switcher buttons
     const weaponButtons = document.querySelectorAll('.weapon-switcher .weapon-btn');
     const weapons: WeaponType[] = ['fists', 'bat', 'pistol'];
     weaponButtons.forEach((btn, idx) => {
@@ -406,6 +562,25 @@ class Game {
         this.player.setWeapon(weapons[idx]);
       });
     });
+  }
+
+  private togglePauseMenu(): void {
+    const pauseMenu = document.getElementById('pause-menu')!;
+    this.isPaused = !this.isPaused;
+
+    if (this.isPaused) {
+      pauseMenu.classList.remove('hidden');
+      if (document.pointerLockElement) document.exitPointerLock();
+
+      const restartMissionBtn = document.getElementById('pause-restart-mission-btn')!;
+      if (this.missionManager.activeMission) {
+        restartMissionBtn.classList.remove('hidden');
+      } else {
+        restartMissionBtn.classList.add('hidden');
+      }
+    } else {
+      pauseMenu.classList.add('hidden');
+    }
   }
 
   private toggleHelpModal(): void {
@@ -419,7 +594,7 @@ class Game {
   private checkVehicleProximity(): void {
     if (this.player.state === PlayerState.IN_VEHICLE) {
       this.nearbyVehicle = null;
-      this.hud.showPrompt('EXIT VEHICLE');
+      this.hud.showPrompt('EXIT VEHICLE [F]');
       return;
     }
 
@@ -427,10 +602,17 @@ class Game {
     let closestDist = Infinity;
     let closestVehicle: Vehicle | null = null;
 
-    for (const v of this.vehicles) {
+    // Check parked vehicles + traffic vehicles + police vehicles
+    const allVehicles = [
+      ...this.vehicles,
+      ...this.trafficManager.getAllVehicles(),
+      ...this.policeSystem.policeCars.map((p) => p.vehicle),
+    ];
+
+    for (const v of allVehicles) {
       const doorPos = v.getDriverDoorPosition();
       const dist = playerPos.distanceTo(doorPos);
-      if (dist < 4.0 && dist < closestDist) {
+      if (dist < 4.2 && dist < closestDist) {
         closestDist = dist;
         closestVehicle = v;
       }
@@ -438,7 +620,7 @@ class Game {
 
     this.nearbyVehicle = closestVehicle;
     if (closestVehicle) {
-      this.hud.showPrompt(`HIJACK ${closestVehicle.config.name}`);
+      this.hud.showPrompt(`ENTER ${closestVehicle.config.name} [F]`);
     } else {
       this.hud.hidePrompt();
     }
@@ -450,32 +632,81 @@ class Game {
     const deltaTime = Math.min((now - this.lastTime) / 1000, 0.1);
     this.lastTime = now;
 
-    // 1. Process inputs
+    if (this.isPaused) {
+      // Still render scene when paused
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
+
+    // 1. Process continuous inputs
     this.processInputs();
 
     // 2. Physics simulation
     this.physics.step(deltaTime);
 
-    // 3. Vehicles update
+    // 3. Day/Night progression
+    this.dayNight.update(deltaTime);
+
+    // 4. Update Parked Vehicles
     for (const v of this.vehicles) {
       v.update(deltaTime);
     }
 
-    // 4. Player update
+    // 5. Player update
     this.player.update(deltaTime);
+    const playerPos = this.player.getPosition();
 
-    // 5. Check vehicle proximity
+    // 6. AI Systems (Pedestrians, Traffic, Police)
+    this.pedManager.update(deltaTime, playerPos);
+    this.trafficManager.update(deltaTime, playerPos, this.player.currentVehicle);
+    this.policeSystem.update(deltaTime, this.player);
+
+    // 7. Missions & Collectibles
+    this.missionManager.update(deltaTime, this.player);
+    this.collectiblesManager.update(deltaTime, this.player, (item) => {
+      if (item.type === 'cash') {
+        this.cash += item.value;
+        this.hud.setCash(this.cash);
+        this.hud.showToast(`+$${item.value} Picked Up!`, 2000);
+      } else if (item.type === 'health') {
+        this.hud.showToast('Health Restored +50', 2000);
+      } else if (item.type === 'armor') {
+        this.hud.showToast('Body Armor Equipped +50', 2000);
+      } else if (item.type === 'ammo') {
+        this.hud.showToast('Ammunition +30 Rounds', 2000);
+      }
+    });
+
+    // 8. Vehicle Proximity Check
     this.checkVehicleProximity();
 
-    // 6. Update HUD, Minimap Radar & Speedometer
+    // 9. Sync Wanted Level on HUD
+    this.hud.setWantedLevel(this.policeSystem.wantedLevel, this.policeSystem.isCoolingDown);
+
+    // 10. Update HUD, Minimap Radar & Speedometer
+    const visibleVehicles = [
+      ...this.vehicles,
+      ...this.trafficManager.getAllVehicles(),
+      ...this.policeSystem.policeCars.map((p) => p.vehicle),
+    ];
+
     this.hud.update(
       this.player,
-      this.vehicles,
+      visibleVehicles,
       this.city,
-      this.audio.getRadioStation()
+      this.audio.getRadioStation(),
+      this.missionManager,
+      this.dayNight.getFormattedTime()
     );
 
-    // 7. Render 3D Scene
+    // 11. Auto-save every 35 seconds
+    this.autoSaveTimer += deltaTime;
+    if (this.autoSaveTimer > 35) {
+      this.autoSaveTimer = 0;
+      this.saveCurrentGame();
+    }
+
+    // 12. Render 3D Scene
     this.renderer.render(this.scene, this.camera);
   }
 }

@@ -417,6 +417,8 @@ export class Player {
     this.pistolMesh.visible = weapon === 'pistol';
   }
 
+  public onAttackCallback?: (playerPos: THREE.Vector3, yaw: number, weapon: WeaponType) => void;
+
   /**
    * Trigger attack: Punch combo, baseball bat swing, or pistol shot!
    */
@@ -445,6 +447,31 @@ export class Player {
         }, 50);
       }
     }
+
+    if (this.onAttackCallback) {
+      this.onAttackCallback(this.mesh.position.clone(), this.mesh.rotation.y, this.currentWeapon);
+    }
+  }
+
+  public takeDamage(amount: number): void {
+    if (this.armor > 0) {
+      const absorbed = Math.min(this.armor, amount * 0.7);
+      this.armor -= absorbed;
+      amount -= absorbed;
+    }
+    this.health = Math.max(0, this.health - amount);
+  }
+
+  public respawn(pos: THREE.Vector3): void {
+    if (this.state === PlayerState.IN_VEHICLE) {
+      this.exitVehicle();
+    }
+    this.health = 100;
+    this.armor = 100;
+    this.stamina = 100;
+    this.body.position.set(pos.x, pos.y + 1.5, pos.z);
+    this.body.velocity.set(0, 0, 0);
+    this.mesh.position.copy(pos);
   }
 
   public cycleCameraDistance(): void {

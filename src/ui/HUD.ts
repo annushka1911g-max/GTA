@@ -1,6 +1,8 @@
+import * as THREE from 'three';
 import { Player, PlayerState, WeaponType } from '../entities/Player';
 import { Vehicle } from '../entities/Vehicle';
 import { City } from '../world/City';
+import { MissionManager } from '../missions/MissionManager';
 
 export class HUD {
   private radarCanvas: HTMLCanvasElement;
@@ -16,6 +18,7 @@ export class HUD {
   private radioStationName: HTMLElement;
   private locationLabel: HTMLElement;
 
+  private hudCash: HTMLElement;
   private healthFill: HTMLElement;
   private armorFill: HTMLElement;
   private staminaFill: HTMLElement;
@@ -30,7 +33,27 @@ export class HUD {
   private wantedStars: NodeListOf<HTMLElement>;
   private wantedLevel = 0;
 
-  // Vice City iconic neighborhoods
+  // Mission HUD elements
+  private missionHud: HTMLElement;
+  private missionTitle: HTMLElement;
+  private missionObjective: HTMLElement;
+  private missionTimerContainer: HTMLElement;
+  private missionTimer: HTMLElement;
+
+  // Notification and banner
+  private notificationToast: HTMLElement;
+  private toastText: HTMLElement;
+  private toastTimeout: number | null = null;
+
+  private missionBanner: HTMLElement;
+  private bannerTitle: HTMLElement;
+  private bannerSubtitle: HTMLElement;
+  private bannerTimeout: number | null = null;
+
+  // Death screens
+  private bustedScreen: HTMLElement;
+  private wastedScreen: HTMLElement;
+
   private neighborhoods = [
     { name: 'OCEAN BEACH, OCEAN DRIVE', minX: 80, maxX: 200, minZ: -300, maxZ: 300 },
     { name: 'WASHINGTON BEACH', minX: -50, maxX: 80, minZ: -100, maxZ: 100 },
@@ -53,6 +76,7 @@ export class HUD {
     this.radioStationName = document.getElementById('radio-station-name')!;
     this.locationLabel = document.getElementById('location-label')!;
 
+    this.hudCash = document.getElementById('hud-cash')!;
     this.healthFill = document.getElementById('health-fill')!;
     this.armorFill = document.getElementById('armor-fill')!;
     this.staminaFill = document.getElementById('stamina-fill')!;
@@ -65,6 +89,27 @@ export class HUD {
     this.weaponButtons = document.querySelectorAll('.weapon-switcher .weapon-btn');
 
     this.wantedStars = document.querySelectorAll('.wanted-stars .star');
+
+    this.missionHud = document.getElementById('mission-hud')!;
+    this.missionTitle = document.getElementById('mission-title')!;
+    this.missionObjective = document.getElementById('mission-objective')!;
+    this.missionTimerContainer = document.getElementById('mission-timer-container')!;
+    this.missionTimer = document.getElementById('mission-timer')!;
+
+    this.notificationToast = document.getElementById('notification-toast')!;
+    this.toastText = document.getElementById('toast-text')!;
+
+    this.missionBanner = document.getElementById('mission-banner')!;
+    this.bannerTitle = document.getElementById('banner-title')!;
+    this.bannerSubtitle = document.getElementById('banner-subtitle')!;
+
+    this.bustedScreen = document.getElementById('busted-screen')!;
+    this.wastedScreen = document.getElementById('wasted-screen')!;
+  }
+
+  public setCash(cash: number): void {
+    const padded = Math.max(0, Math.floor(cash)).toString().padStart(8, '0');
+    this.hudCash.textContent = padded;
   }
 
   public showPrompt(text: string): void {
@@ -76,15 +121,52 @@ export class HUD {
     this.actionPrompt.classList.add('hidden');
   }
 
-  public setWantedLevel(stars: number): void {
+  public setWantedLevel(stars: number, isBlinking = false): void {
     this.wantedLevel = Math.max(0, Math.min(5, stars));
     this.wantedStars.forEach((star, index) => {
       if (index < this.wantedLevel) {
         star.classList.add('active');
+        if (isBlinking) {
+          star.style.opacity = Math.sin(performance.now() * 0.01) > 0 ? '1' : '0.2';
+        } else {
+          star.style.opacity = '1';
+        }
       } else {
         star.classList.remove('active');
+        star.style.opacity = '0.2';
       }
     });
+  }
+
+  public showToast(message: string, duration = 3000): void {
+    if (this.toastTimeout) clearTimeout(this.toastTimeout);
+    this.toastText.textContent = message;
+    this.notificationToast.classList.remove('hidden');
+    this.toastTimeout = window.setTimeout(() => {
+      this.notificationToast.classList.add('hidden');
+    }, duration);
+  }
+
+  public showMissionBanner(title: string, subtitle: string, isSuccess = true): void {
+    if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
+    this.bannerTitle.textContent = title;
+    this.bannerTitle.style.color = isSuccess ? '#a3e635' : '#ef4444';
+    this.bannerSubtitle.textContent = subtitle;
+    this.missionBanner.classList.remove('hidden');
+
+    this.bannerTimeout = window.setTimeout(() => {
+      this.missionBanner.classList.add('hidden');
+    }, 4500);
+  }
+
+  public showBustedScreen(show: boolean): void {
+    if (show) this.bustedScreen.classList.remove('hidden');
+    else this.bustedScreen.classList.add('hidden');
+  }
+
+  public showWastedScreen(show: boolean): void {
+    if (show) this.wastedScreen.classList.remove('hidden');
+    else this.wastedScreen.classList.add('hidden');
   }
 
   public updateWeaponHUD(weapon: WeaponType, ammo: number): void {
@@ -108,10 +190,17 @@ export class HUD {
     });
   }
 
-  public update(player: Player, vehicles: Vehicle[], city: City, radioStation: string): void {
+  public update(
+    player: Player,
+    vehicles: Vehicle[],
+    city: City,
+    radioStation: string,
+    missionManager?: MissionManager,
+    timeString?: string
+  ): void {
     const playerPos = player.getPosition();
 
-    // 1. Location
+    // 1. Location & Time
     let currentNeighborhood = 'VICE CITY METRO';
     for (const zone of this.neighborhoods) {
       if (
@@ -124,7 +213,9 @@ export class HUD {
         break;
       }
     }
-    this.locationLabel.textContent = currentNeighborhood;
+    this.locationLabel.textContent = timeString
+      ? `${currentNeighborhood} • ${timeString}`
+      : currentNeighborhood;
 
     // 2. Health & Armor & Stamina
     const hp = Math.max(0, Math.round(player.health));
@@ -155,11 +246,30 @@ export class HUD {
       this.vehicleHud.classList.add('hidden');
     }
 
-    // 5. Radar
-    this.renderRadar(player, vehicles, city);
+    // 5. Mission HUD Card
+    if (missionManager && missionManager.activeMission) {
+      this.missionHud.classList.remove('hidden');
+      this.missionTitle.textContent = missionManager.activeMission.title;
+      const step = missionManager.activeMission.steps[missionManager.currentStepIndex];
+      this.missionObjective.textContent = step.description;
+
+      if (missionManager.stepTimeRemaining > 0) {
+        this.missionTimerContainer.classList.remove('hidden');
+        const mins = Math.floor(missionManager.stepTimeRemaining / 60);
+        const secs = Math.floor(missionManager.stepTimeRemaining % 60);
+        this.missionTimer.textContent = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+      } else {
+        this.missionTimerContainer.classList.add('hidden');
+      }
+    } else {
+      this.missionHud.classList.add('hidden');
+    }
+
+    // 6. Radar Canvas
+    this.renderRadar(player, vehicles, city, missionManager);
   }
 
-  private renderRadar(player: Player, vehicles: Vehicle[], city: City): void {
+  private renderRadar(player: Player, vehicles: Vehicle[], city: City, missionManager?: MissionManager): void {
     const ctx = this.radarCtx;
     const width = this.radarCanvas.width;
     const height = this.radarCanvas.height;
@@ -251,7 +361,7 @@ export class HUD {
       const vz = (v.mesh.position.z - playerPos.z) * radarScale;
 
       if (Math.hypot(vx, vz) < radarRadius - 6) {
-        let blipColor = '#ff007f'; // Infernus / sports
+        let blipColor = '#ff007f';
         if (v.config.type === 'cheetah') blipColor = '#00f0ff';
         else if (v.config.type === 'police') blipColor = '#22c55e';
         else if (v.config.type === 'taxi') blipColor = '#facc15';
@@ -263,6 +373,36 @@ export class HUD {
         ctx.fill();
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    // Active Mission Waypoint on Radar
+    if (missionManager && missionManager.activeMission) {
+      const wp = missionManager.getActiveWaypointPosition();
+      if (wp) {
+        let wx = (wp.x - playerPos.x) * radarScale;
+        let wz = (wp.z - playerPos.z) * radarScale;
+        const distToWp = Math.hypot(wx, wz);
+
+        // Clamp to radar perimeter if off-screen
+        if (distToWp > radarRadius - 10) {
+          const ratio = (radarRadius - 10) / distToWp;
+          wx *= ratio;
+          wz *= ratio;
+        }
+
+        // Pulsing yellow waypoint dot
+        const pulse = 1.0 + Math.sin(performance.now() * 0.008) * 0.3;
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(wx, wz, 6 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ff007f';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(wx, wz, 9 * pulse, 0, Math.PI * 2);
         ctx.stroke();
       }
     }

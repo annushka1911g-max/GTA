@@ -155,6 +155,74 @@
       <!-- Help Toggle Button -->
       <button id="toggle-help-btn" class="help-pill-btn">Controls [H/TAB]</button>
 
+      <!-- Mission Objective & Timer HUD (Top-Left under clock) -->
+      <div id="mission-hud" class="mission-hud hidden">
+        <div class="mission-header">
+          <span class="mission-badge">ACTIVE MISSION</span>
+          <span id="mission-title" class="mission-title">THE FIRST DELIVERY</span>
+        </div>
+        <div id="mission-objective" class="mission-objective">Get in a vehicle and deliver the package to Downtown</div>
+        <div id="mission-timer-container" class="mission-timer-container hidden">
+          <span class="timer-icon">⏱️</span> <span id="mission-timer">01:30</span>
+        </div>
+      </div>
+
+      <!-- In-Game Notification Toast -->
+      <div id="notification-toast" class="notification-toast hidden">
+        <span id="toast-text">MISSION PASSED +$3,000</span>
+      </div>
+
+      <!-- Big Mission Pass / Fail Splash Banner -->
+      <div id="mission-banner" class="mission-banner hidden">
+        <h2 id="banner-title" class="banner-title">MISSION PASSED!</h2>
+        <div id="banner-subtitle" class="banner-subtitle">REWARD: +$3,000</div>
+      </div>
+
+      <!-- BUSTED Screen Overlay -->
+      <div id="busted-screen" class="death-screen busted-screen hidden">
+        <h1 class="death-title busted-title">BUSTED</h1>
+        <p class="death-desc">You were detained by the Sun Bay Police Department.</p>
+        <span class="death-fine">Bail & Legal Fees: -$500 | Weapons Confiscated</span>
+      </div>
+
+      <!-- WASTED Screen Overlay -->
+      <div id="wasted-screen" class="death-screen wasted-screen hidden">
+        <h1 class="death-title wasted-title">WASTED</h1>
+        <p class="death-desc">Revived at Ocean View Medical Center.</p>
+        <span class="death-fine">Hospital Emergency Bills: -$500</span>
+      </div>
+
+      <!-- Pause Menu (ESC to open / close) -->
+      <div id="pause-menu" class="pause-menu hidden">
+        <div class="pause-card">
+          <div class="pause-header">
+            <span class="vc-top-brand">GRAND THEFT AUTO</span>
+            <h2 class="vc-title" style="font-size: 58px;">Game Paused</h2>
+          </div>
+          <div class="pause-menu-actions">
+            <button id="pause-resume-btn" class="menu-action-btn primary">RESUME GAME</button>
+            <button id="pause-restart-mission-btn" class="menu-action-btn hidden">RESTART MISSION</button>
+            <button id="pause-save-btn" class="menu-action-btn">SAVE GAME</button>
+            <button id="pause-controls-btn" class="menu-action-btn">VIEW CONTROLS</button>
+            
+            <div class="pause-time-picker">
+              <span class="time-picker-label">Time of Day:</span>
+              <div class="time-buttons">
+                <button class="time-btn" data-hour="6">Sunrise 🌅</button>
+                <button class="time-btn" data-hour="12">Noon ☀️</button>
+                <button class="time-btn" data-hour="18.5">Sunset 🌇</button>
+                <button class="time-btn" data-hour="23">Night 🌙</button>
+              </div>
+            </div>
+
+            <button id="pause-reset-btn" class="menu-action-btn danger">RESET ALL PROGRESS</button>
+          </div>
+          <div class="pause-footer">
+            <span>Press <kbd>ESC</kbd> to resume play</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Center Start / Click to Play Overlay (Vice City 80s Theme) -->
       <div id="start-overlay" class="start-overlay">
         <div class="start-card">
@@ -168,9 +236,11 @@
             <div class="feat-badge">🏎️ Infernus, Cheetah & Retro Cars</div>
             <div class="feat-badge">👔 Tommy Vercetti & 3-Hit Combos</div>
             <div class="feat-badge">📻 Flash FM & Wave 103 80s Synth</div>
+            <div class="feat-badge">🚨 VCPD Police & 5-Star Wanted</div>
+            <div class="feat-badge">💼 3 Playable Syndicate Missions</div>
           </div>
           <button id="start-btn" class="start-game-btn">START GAME</button>
-          <div class="start-tip">Click to play in fullscreen with 80s Synth Radio & Drifting</div>
+          <div class="start-tip">Click to play with 80s Synth Radio, Traffic, Pedestrians & Drifting</div>
         </div>
       </div>
 
