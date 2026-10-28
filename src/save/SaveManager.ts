@@ -1,3 +1,5 @@
+import { WeaponType } from '../entities/Player';
+
 export interface GameSaveData {
   version: number;
   cash: number;
@@ -7,8 +9,13 @@ export interface GameSaveData {
   position: { x: number; y: number; z: number };
   completedMissions: string[];
   activeMissionId: string | null;
-  currentWeapon: 'fists' | 'bat' | 'pistol';
+  currentWeapon: WeaponType;
   pistolAmmo: number;
+  shotgunAmmo: number;
+  smgAmmo: number;
+  m4Ammo: number;
+  rpgAmmo: number;
+  grenadeCount: number;
   settings: {
     soundVolume: number;
     radioVolume: number;
@@ -31,6 +38,11 @@ export class SaveManager {
     activeMissionId: null,
     currentWeapon: 'fists',
     pistolAmmo: 60,
+    shotgunAmmo: 35,
+    smgAmmo: 150,
+    m4Ammo: 200,
+    rpgAmmo: 10,
+    grenadeCount: 8,
     settings: {
       soundVolume: 0.8,
       radioVolume: 0.7,

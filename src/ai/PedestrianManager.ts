@@ -122,15 +122,25 @@ export class PedestrianManager {
   }
 
   /**
-   * Check attacks from player: punches, bat, gunshots
+   * Check attacks from player against all weapon types
    */
   public handlePlayerAttack(
     playerPos: THREE.Vector3,
     facingYaw: number,
-    weapon: 'fists' | 'bat' | 'pistol'
+    weapon: string
   ): Pedestrian | null {
-    const range = weapon === 'pistol' ? 35 : weapon === 'bat' ? 2.8 : 2.2;
-    const damage = weapon === 'pistol' ? 45 : weapon === 'bat' ? 30 : 18;
+    const rangeMap: Record<string, number> = {
+      fists: 2.2, bat: 2.8, katana: 3.2,
+      pistol: 35, shotgun: 18, smg: 30, m4: 40,
+      rpg: 5, grenade: 5,
+    };
+    const damageMap: Record<string, number> = {
+      fists: 18, bat: 30, katana: 50,
+      pistol: 45, shotgun: 75, smg: 28, m4: 35,
+      rpg: 10, grenade: 10,
+    };
+    const range = rangeMap[weapon] ?? 2.2;
+    const damage = damageMap[weapon] ?? 18;
 
     const attackDir = new THREE.Vector3(Math.sin(facingYaw), 0, Math.cos(facingYaw)).normalize();
 

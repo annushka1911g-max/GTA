@@ -9,7 +9,7 @@ export enum PlayerState {
   IN_VEHICLE = 'IN_VEHICLE',
 }
 
-export type WeaponType = 'fists' | 'bat' | 'pistol';
+export type WeaponType = 'fists' | 'bat' | 'katana' | 'pistol' | 'shotgun' | 'smg' | 'm4' | 'rpg' | 'grenade';
 
 export class Player {
   public mesh: THREE.Group;
@@ -37,10 +37,22 @@ export class Player {
 
   // Weapon visual 3D attachments
   private batMesh: THREE.Group;
+  private katanaMesh: THREE.Group;
   private pistolMesh: THREE.Group;
+  private shotgunMesh: THREE.Group;
+  private smgMesh: THREE.Group;
+  private m4Mesh: THREE.Group;
+  private rpgMesh: THREE.Group;
+  private grenadeMesh: THREE.Group;
   private muzzleFlash: THREE.PointLight;
+
   public currentWeapon: WeaponType = 'fists';
   public pistolAmmo = 60;
+  public shotgunAmmo = 35;
+  public smgAmmo = 150;
+  public m4Ammo = 200;
+  public rpgAmmo = 10;
+  public grenadeCount = 8;
 
   // Input states
   public moveForward = 0;
@@ -103,7 +115,13 @@ export class Player {
     this.rightThigh = rig.rightThigh;
     this.rightCalf = rig.rightCalf;
     this.batMesh = rig.batMesh;
+    this.katanaMesh = rig.katanaMesh;
     this.pistolMesh = rig.pistolMesh;
+    this.shotgunMesh = rig.shotgunMesh;
+    this.smgMesh = rig.smgMesh;
+    this.m4Mesh = rig.m4Mesh;
+    this.rpgMesh = rig.rpgMesh;
+    this.grenadeMesh = rig.grenadeMesh;
     this.muzzleFlash = rig.muzzleFlash;
 
     // 3. Physics Body with upright damping
@@ -247,10 +265,40 @@ export class Player {
     batMesh.visible = false;
     rightHandWeaponMount.add(batMesh);
 
-    // 2. Colt .45 Pistol
+    // 2. Katana (Japanese Sword)
+    const katanaMesh = this.createKatanaMesh();
+    katanaMesh.visible = false;
+    rightHandWeaponMount.add(katanaMesh);
+
+    // 3. Colt .45 Pistol
     const pistolMesh = this.createPistolMesh();
     pistolMesh.visible = false;
     rightHandWeaponMount.add(pistolMesh);
+
+    // 4. Chrome Shotgun (Stubby)
+    const shotgunMesh = this.createShotgunMesh();
+    shotgunMesh.visible = false;
+    rightHandWeaponMount.add(shotgunMesh);
+
+    // 5. Tec-9 / Mac-10 SMG
+    const smgMesh = this.createSMGMesh();
+    smgMesh.visible = false;
+    rightHandWeaponMount.add(smgMesh);
+
+    // 6. M4 Assault Rifle
+    const m4Mesh = this.createM4Mesh();
+    m4Mesh.visible = false;
+    rightHandWeaponMount.add(m4Mesh);
+
+    // 7. RPG Launcher
+    const rpgMesh = this.createRPGMesh();
+    rpgMesh.visible = false;
+    rightHandWeaponMount.add(rpgMesh);
+
+    // 8. Grenade
+    const grenadeMesh = this.createGrenadeMesh();
+    grenadeMesh.visible = false;
+    rightHandWeaponMount.add(grenadeMesh);
 
     // Muzzle flash point light
     const muzzleFlash = new THREE.PointLight(0xffedd5, 0, 10);
@@ -320,7 +368,13 @@ export class Player {
       rightThigh,
       rightCalf,
       batMesh,
+      katanaMesh,
       pistolMesh,
+      shotgunMesh,
+      smgMesh,
+      m4Mesh,
+      rpgMesh,
+      grenadeMesh,
       muzzleFlash,
     };
   }
@@ -408,13 +462,196 @@ export class Player {
     return pistol;
   }
 
+  private createKatanaMesh(): THREE.Group {
+    const katana = new THREE.Group();
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.95, roughness: 0.05 });
+    const handleMat = new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.9 });
+    const guardMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8, roughness: 0.2 });
+
+    // Handle wrap
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.028, 0.3, 8), handleMat);
+    handle.position.z = 0.05;
+    katana.add(handle);
+
+    // Tsuba (guard disc)
+    const guard = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.025, 12), guardMat);
+    guard.position.z = 0.2;
+    katana.add(guard);
+
+    // Blade (long slender)
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.012, 0.7), bladeMat);
+    blade.position.z = 0.58;
+    katana.add(blade);
+
+    katana.rotation.x = Math.PI / 3;
+    return katana;
+  }
+
+  private createShotgunMesh(): THREE.Group {
+    const shotgun = new THREE.Group();
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0xa1a1aa, metalness: 0.85, roughness: 0.15 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.7 });
+
+    // Barrel
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.55, 8), metalMat);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.z = 0.35;
+    shotgun.add(barrel);
+
+    // Receiver body
+    const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.08, 0.25), metalMat);
+    receiver.position.z = 0.06;
+    shotgun.add(receiver);
+
+    // Wood Stock
+    const stock = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.09, 0.22), woodMat);
+    stock.position.set(0, -0.01, -0.12);
+    stock.rotation.x = 0.1;
+    shotgun.add(stock);
+
+    // Pump handle
+    const pump = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.05, 0.12), woodMat);
+    pump.position.set(0, -0.04, 0.28);
+    shotgun.add(pump);
+
+    shotgun.rotation.x = Math.PI / 6;
+    return shotgun;
+  }
+
+  private createSMGMesh(): THREE.Group {
+    const smg = new THREE.Group();
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x27272a, metalness: 0.9, roughness: 0.2 });
+
+    // Barrel
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.2, 8), metalMat);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.z = 0.28;
+    smg.add(barrel);
+
+    // Compact body
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.18), metalMat);
+    body.position.z = 0.08;
+    smg.add(body);
+
+    // Magazine
+    const mag = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.04), metalMat);
+    mag.position.set(0, -0.1, 0.06);
+    smg.add(mag);
+
+    smg.rotation.x = Math.PI / 6;
+    return smg;
+  }
+
+  private createM4Mesh(): THREE.Group {
+    const m4 = new THREE.Group();
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x27272a, metalness: 0.85, roughness: 0.2 });
+    const stockMat = new THREE.MeshStandardMaterial({ color: 0x292524, roughness: 0.7 });
+
+    // Barrel with flash hider
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.42, 8), metalMat);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.z = 0.4;
+    m4.add(barrel);
+
+    // Upper receiver
+    const upper = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.07, 0.28), metalMat);
+    upper.position.z = 0.1;
+    m4.add(upper);
+
+    // Carry handle / sight rail
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.04, 0.14), metalMat);
+    rail.position.set(0, 0.055, 0.12);
+    m4.add(rail);
+
+    // Magazine
+    const mag = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.14, 0.04), metalMat);
+    mag.position.set(0, -0.1, 0.06);
+    mag.rotation.x = -0.12;
+    m4.add(mag);
+
+    // Stock
+    const stock = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.2), stockMat);
+    stock.position.set(0, 0, -0.13);
+    m4.add(stock);
+
+    m4.rotation.x = Math.PI / 6;
+    return m4;
+  }
+
+  private createRPGMesh(): THREE.Group {
+    const rpg = new THREE.Group();
+    const tubeMat = new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.6, metalness: 0.3 });
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x52525b, metalness: 0.7, roughness: 0.3 });
+
+    // Launch tube
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.75, 12), tubeMat);
+    tube.rotation.x = Math.PI / 2;
+    tube.position.z = 0.2;
+    rpg.add(tube);
+
+    // Flared front sight
+    const flare = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.05, 0.08, 12), tubeMat);
+    flare.rotation.x = Math.PI / 2;
+    flare.position.z = 0.58;
+    rpg.add(flare);
+
+    // Iron Sights
+    const sight = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.06, 0.015), metalMat);
+    sight.position.set(0, 0.07, 0.4);
+    rpg.add(sight);
+
+    // Grip
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.06), metalMat);
+    grip.position.set(0, -0.08, 0.0);
+    grip.rotation.x = -0.2;
+    rpg.add(grip);
+
+    rpg.rotation.x = Math.PI / 6;
+    return rpg;
+  }
+
+  private createGrenadeMesh(): THREE.Group {
+    const grenade = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.75, metalness: 0.2 });
+    const pinMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.8, roughness: 0.2 });
+
+    // Grenade body
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 10), bodyMat);
+    grenade.add(body);
+
+    // Spoon lever
+    const spoon = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.01, 0.08), pinMat);
+    spoon.position.set(0, 0.06, 0);
+    grenade.add(spoon);
+
+    // Pin ring
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.005, 6, 8), pinMat);
+    ring.position.set(0.03, 0.07, 0);
+    grenade.add(ring);
+
+    return grenade;
+  }
+
+  private fireMuzzleFlash(): void {
+    this.muzzleFlash.intensity = 20;
+    setTimeout(() => {
+      this.muzzleFlash.intensity = 0;
+    }, 50);
+  }
+
   /**
    * Weapon switching
    */
   public setWeapon(weapon: WeaponType): void {
     this.currentWeapon = weapon;
     this.batMesh.visible = weapon === 'bat';
+    this.katanaMesh.visible = weapon === 'katana';
     this.pistolMesh.visible = weapon === 'pistol';
+    this.shotgunMesh.visible = weapon === 'shotgun';
+    this.smgMesh.visible = weapon === 'smg';
+    this.m4Mesh.visible = weapon === 'm4';
+    this.rpgMesh.visible = weapon === 'rpg';
+    this.grenadeMesh.visible = weapon === 'grenade';
   }
 
   public onAttackCallback?: (playerPos: THREE.Vector3, yaw: number, weapon: WeaponType) => void;
@@ -434,17 +671,47 @@ export class Player {
     } else if (this.currentWeapon === 'bat') {
       this.attackTimer = 0.42;
       this.audio.playBatSwing();
+    } else if (this.currentWeapon === 'katana') {
+      this.attackTimer = 0.35;
+      this.audio.playKatanaSlash();
     } else if (this.currentWeapon === 'pistol') {
       if (this.pistolAmmo > 0) {
         this.pistolAmmo--;
         this.attackTimer = 0.25;
         this.audio.playGunshot();
-
-        // Muzzle flash
-        this.muzzleFlash.intensity = 20;
-        setTimeout(() => {
-          this.muzzleFlash.intensity = 0;
-        }, 50);
+        this.fireMuzzleFlash();
+      }
+    } else if (this.currentWeapon === 'shotgun') {
+      if (this.shotgunAmmo > 0) {
+        this.shotgunAmmo--;
+        this.attackTimer = 0.55;
+        this.audio.playShotgun();
+        this.fireMuzzleFlash();
+      }
+    } else if (this.currentWeapon === 'smg') {
+      if (this.smgAmmo > 0) {
+        this.smgAmmo--;
+        this.attackTimer = 0.08;
+        this.audio.playSMG();
+        this.fireMuzzleFlash();
+      }
+    } else if (this.currentWeapon === 'm4') {
+      if (this.m4Ammo > 0) {
+        this.m4Ammo--;
+        this.attackTimer = 0.1;
+        this.audio.playM4();
+        this.fireMuzzleFlash();
+      }
+    } else if (this.currentWeapon === 'rpg') {
+      if (this.rpgAmmo > 0) {
+        this.rpgAmmo--;
+        this.attackTimer = 1.2;
+        this.audio.playRocketLaunch();
+      }
+    } else if (this.currentWeapon === 'grenade') {
+      if (this.grenadeCount > 0) {
+        this.grenadeCount--;
+        this.attackTimer = 0.65;
       }
     }
 
@@ -707,10 +974,37 @@ export class Player {
         this.rightUpperArm.rotation.x = -Math.PI / 2;
         this.rightUpperArm.rotation.y = Math.sin(this.attackTimer * 12) * 1.2;
         this.torso.rotation.y = Math.sin(this.attackTimer * 12) * 0.4;
+      } else if (this.currentWeapon === 'katana') {
+        // Katana Slash (downward diagonal arc)
+        this.rightUpperArm.rotation.x = -Math.PI / 2 - 0.3;
+        this.rightUpperArm.rotation.y = Math.sin(this.attackTimer * 15) * 1.4;
+        this.torso.rotation.y = Math.sin(this.attackTimer * 15) * 0.5;
       } else if (this.currentWeapon === 'pistol') {
         // Pistol Recoil
         this.rightUpperArm.rotation.x = -Math.PI / 2 - 0.25;
         this.rightForearm.rotation.x = 0.2;
+      } else if (this.currentWeapon === 'shotgun') {
+        // Shotgun pump recoil
+        this.rightUpperArm.rotation.x = -Math.PI / 2 - 0.4;
+        this.rightForearm.rotation.x = 0.15;
+        this.leftUpperArm.rotation.x = -Math.PI / 2;
+        this.leftForearm.rotation.x = -0.3;
+      } else if (this.currentWeapon === 'smg' || this.currentWeapon === 'm4') {
+        // Automatic fire spray
+        this.rightUpperArm.rotation.x = -Math.PI / 2 - 0.15;
+        this.rightForearm.rotation.x = 0.1 + Math.sin(this.attackTimer * 40) * 0.06;
+        this.leftUpperArm.rotation.x = -Math.PI / 2;
+        this.leftForearm.rotation.x = -0.4;
+      } else if (this.currentWeapon === 'rpg') {
+        // RPG shoulder mount
+        this.rightUpperArm.rotation.x = -Math.PI / 2 - 0.2;
+        this.rightForearm.rotation.x = 0;
+        this.leftUpperArm.rotation.x = -Math.PI / 2 + 0.1;
+        this.leftForearm.rotation.x = -0.6;
+      } else if (this.currentWeapon === 'grenade') {
+        // Overhand throw
+        this.rightUpperArm.rotation.x = -Math.PI / 1.3;
+        this.rightForearm.rotation.x = 0.3;
       }
     }
   }

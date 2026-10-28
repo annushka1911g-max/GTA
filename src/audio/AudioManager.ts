@@ -35,6 +35,8 @@ export class AudioManager {
     'FLASH FM - 80s SYNTH POP',
     'WAVE 103 - NEW WAVE / DARKWAVE',
     'FEVER 105 - MIAMI DISCO & FUNK',
+    'V-ROCK - 80s HEAVY METAL',
+    'EMOTION 98.3 - CROCKETT\'S THEME',
     'RADIO OFF',
   ];
 
@@ -468,6 +470,249 @@ export class AudioManager {
   }
 
   /**
+   * Japanese Katana sword slash (high-velocity metallic whoosh + blade slice)
+   */
+  public playKatanaSlash(): void {
+    if (!this.ctx) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.exponentialRampToValueAtTime(180, now + 0.12);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1400, now);
+    filter.Q.setValueAtTime(3.0, now);
+
+    gain.gain.setValueAtTime(0.24, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  }
+
+  /**
+   * Chrome Shotgun (massive dual blast + heavy bass thump)
+   */
+  public playShotgun(): void {
+    if (!this.ctx || !this.skidBuffer) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this.skidBuffer;
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.6, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(2200, now);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.38);
+
+    const kick = this.ctx.createOscillator();
+    const kickGain = this.ctx.createGain();
+    kick.type = 'sine';
+    kick.frequency.setValueAtTime(180, now);
+    kick.frequency.exponentialRampToValueAtTime(30, now + 0.25);
+    kickGain.gain.setValueAtTime(0.5, now);
+    kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+    kick.connect(kickGain);
+    kickGain.connect(this.ctx.destination);
+    kick.start(now);
+    kick.stop(now + 0.3);
+  }
+
+  /**
+   * Rapid Micro-SMG (Mac-10 / Tec-9) burst
+   */
+  public playSMG(): void {
+    if (!this.ctx || !this.skidBuffer) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this.skidBuffer;
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.35, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.setValueAtTime(1200, now);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.1);
+
+    const pop = this.ctx.createOscillator();
+    const popGain = this.ctx.createGain();
+    pop.type = 'square';
+    pop.frequency.setValueAtTime(340, now);
+    pop.frequency.exponentialRampToValueAtTime(80, now + 0.06);
+    popGain.gain.setValueAtTime(0.2, now);
+    popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+    pop.connect(popGain);
+    popGain.connect(this.ctx.destination);
+    pop.start(now);
+    pop.stop(now + 0.08);
+  }
+
+  /**
+   * M4 Assault Rifle (deep military crack)
+   */
+  public playM4(): void {
+    if (!this.ctx || !this.skidBuffer) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this.skidBuffer;
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.5, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(3200, now);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.18);
+
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(280, now);
+    osc.frequency.exponentialRampToValueAtTime(50, now + 0.12);
+    oscGain.gain.setValueAtTime(0.35, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+    osc.connect(oscGain);
+    oscGain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  }
+
+  /**
+   * Rocket Launch (screeching thruster whoosh)
+   */
+  public playRocketLaunch(): void {
+    if (!this.ctx) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(620, now + 0.35);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1200, now);
+
+    gain.gain.setValueAtTime(0.28, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.42);
+  }
+
+  /**
+   * Massive Vice City Explosion Blast
+   */
+  public playExplosion(): void {
+    if (!this.ctx || !this.skidBuffer) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+
+    // Sub-bass detonation thump
+    const sub = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(160, now);
+    sub.frequency.exponentialRampToValueAtTime(20, now + 0.85);
+    subGain.gain.setValueAtTime(0.65, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+    sub.connect(subGain);
+    subGain.connect(this.ctx.destination);
+    sub.start(now);
+    sub.stop(now + 0.95);
+
+    // Roaring noise explosion
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this.skidBuffer;
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.6, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(950, now);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.75);
+  }
+
+  /**
+   * Rhino Tank Cannon shot
+   */
+  public playTankCannon(): void {
+    this.playExplosion();
+  }
+
+  /**
+   * Iconic Vice City "Cheat Activated" Chime
+   */
+  public playCheatActivated(): void {
+    if (!this.ctx) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6 (Major arpeggio)
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+      gain.gain.setValueAtTime(0.18, now + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.28);
+
+      osc.connect(gain);
+      gain.connect(this.ctx!.destination);
+      osc.start(now + idx * 0.08);
+      osc.stop(now + idx * 0.08 + 0.3);
+    });
+  }
+
+  /**
    * Vice City 80s Synthwave Radio
    */
   public getRadioStation(): string {
@@ -491,94 +736,130 @@ export class AudioManager {
       clearInterval(this.radioInterval);
       this.radioInterval = null;
     }
-    if (this.currentRadioStation !== 3) {
+    if (this.currentRadioStation !== 5) {
       this.startRadio();
     }
   }
 
   private startRadio(): void {
-    if (!this.ctx || this.currentRadioStation === 3) return;
+    if (!this.ctx || this.currentRadioStation === 5) return;
 
-    // Flash FM (Synth-pop), Wave 103 (Darkwave), Fever 105 (Funk)
-    // 80s chord progressions:
-    // Flash FM: F - G - Em - Am (Classic 80s anthem)
-    // Wave 103: Dm - Bb - C - Am
-    // Fever 105: Em7 - A7 - Dmaj7 - Bm7
+    // 1. Flash FM: F - G - Em - Am
+    // 2. Wave 103: Dm - Bb - C - Am
+    // 3. Fever 105: Em7 - A7 - Dmaj7 - Bm7
+    // 4. V-Rock: E5 - G5 - A5 - D5 (Heavy metal power chords)
+    // 5. Emotion 98.3: Cmaj7 - Am7 - Dm7 - G7 (Dreamy Crockett's Theme)
     const chordsFlashFM = [
-      [174.61, 220.0, 261.63], // F
-      [196.0, 246.94, 293.66], // G
-      [164.81, 196.0, 246.94], // Em
-      [220.0, 261.63, 329.63], // Am
+      [174.61, 220.0, 261.63],
+      [196.0, 246.94, 293.66],
+      [164.81, 196.0, 246.94],
+      [220.0, 261.63, 329.63],
     ];
 
     const chordsWave103 = [
-      [146.83, 174.61, 220.0], // Dm
-      [116.54, 146.83, 174.61], // Bb
-      [130.81, 164.81, 196.0], // C
-      [110.0, 130.81, 164.81], // Am
+      [146.83, 174.61, 220.0],
+      [116.54, 146.83, 174.61],
+      [130.81, 164.81, 196.0],
+      [110.0, 130.81, 164.81],
     ];
 
     const chordsFever105 = [
-      [164.81, 196.0, 246.94, 293.66], // Em7
-      [220.0, 277.18, 329.63, 392.0], // A7
-      [146.83, 185.0, 220.0, 277.18], // Dmaj7
-      [123.47, 146.83, 185.0, 220.0], // Bm7
+      [164.81, 196.0, 246.94, 293.66],
+      [220.0, 277.18, 329.63, 392.0],
+      [146.83, 185.0, 220.0, 277.18],
+      [123.47, 146.83, 185.0, 220.0],
+    ];
+
+    const chordsVRock = [
+      [82.41, 123.47, 164.81], // E5 power chord
+      [98.0, 146.83, 196.0],   // G5
+      [110.0, 164.81, 220.0],  // A5
+      [73.42, 110.0, 146.83],  // D5
+    ];
+
+    const chordsEmotion = [
+      [130.81, 164.81, 196.0, 246.94], // Cmaj7
+      [110.0, 130.81, 164.81, 196.0],  // Am7
+      [146.83, 174.61, 220.0, 261.63], // Dm7
+      [98.0, 123.47, 146.83, 174.61],  // G7
     ];
 
     let chordSet = chordsFlashFM;
     if (this.currentRadioStation === 1) chordSet = chordsWave103;
     if (this.currentRadioStation === 2) chordSet = chordsFever105;
+    if (this.currentRadioStation === 3) chordSet = chordsVRock;
+    if (this.currentRadioStation === 4) chordSet = chordsEmotion;
 
     let step = 0;
-    const intervalMs = this.currentRadioStation === 0 ? 380 : (this.currentRadioStation === 1 ? 420 : 350);
+    const intervalMs = this.currentRadioStation === 3 ? 320 : (this.currentRadioStation === 4 ? 480 : 380);
 
     this.radioInterval = window.setInterval(() => {
-      if (!this.ctx || this.ctx.state === 'suspended' || this.currentRadioStation === 3) return;
+      if (!this.ctx || this.ctx.state === 'suspended' || this.currentRadioStation === 5) return;
       const now = this.ctx.currentTime;
       const chord = chordSet[step % chordSet.length];
 
-      // 80s Synth Chords with chorus vibe
       chord.forEach((freq, idx) => {
         const osc = this.ctx!.createOscillator();
         const gain = this.ctx!.createGain();
-        osc.type = this.currentRadioStation === 1 ? 'sawtooth' : 'triangle';
-        osc.frequency.setValueAtTime(freq * (this.currentRadioStation === 1 ? 1 : 1.5), now);
 
-        gain.gain.setValueAtTime(0.018, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+        if (this.currentRadioStation === 3) {
+          // V-Rock: Sawtooth overdrive guitar
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.026, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
 
-        const filter = this.ctx!.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1400, now);
+          const filter = this.ctx!.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(2400, now);
+          osc.connect(filter);
+          filter.connect(gain);
+        } else if (this.currentRadioStation === 4) {
+          // Emotion 98.3: Dreamy Jan Hammer synth
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq * 1.5, now);
+          gain.gain.setValueAtTime(0.022, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+          osc.connect(gain);
+        } else {
+          osc.type = this.currentRadioStation === 1 ? 'sawtooth' : 'triangle';
+          osc.frequency.setValueAtTime(freq * (this.currentRadioStation === 1 ? 1 : 1.5), now);
+          gain.gain.setValueAtTime(0.018, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
 
-        osc.connect(filter);
-        filter.connect(gain);
+          const filter = this.ctx!.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1400, now);
+          osc.connect(filter);
+          filter.connect(gain);
+        }
+
         gain.connect(this.ctx!.destination);
-        osc.start(now + idx * 0.05);
-        osc.stop(now + 0.75);
+        osc.start(now + idx * 0.04);
+        osc.stop(now + 0.85);
       });
 
-      // 80s Gated Snare on beat 2 & 4
+      // Gated Snare / Rock Snare
       if (step % 2 === 1 && this.skidBuffer) {
         const snareNoise = this.ctx.createBufferSource();
         snareNoise.buffer = this.skidBuffer;
         const snareGain = this.ctx.createGain();
-        snareGain.gain.setValueAtTime(0.07, now);
-        snareGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        snareGain.gain.setValueAtTime(this.currentRadioStation === 3 ? 0.1 : 0.07, now);
+        snareGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
 
         const filter = this.ctx.createBiquadFilter();
         filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(1800, now);
+        filter.frequency.setValueAtTime(this.currentRadioStation === 3 ? 2400 : 1800, now);
 
         snareNoise.connect(filter);
         filter.connect(snareGain);
         snareGain.connect(this.ctx.destination);
         snareNoise.start(now);
-        snareNoise.stop(now + 0.2);
+        snareNoise.stop(now + 0.22);
       }
 
-      // 80s Roland 808 Kick Drum on beat 1 & 3
-      if (step % 2 === 0) {
+      // Kick Drum
+      if (step % 2 === 0 || (this.currentRadioStation === 3 && step % 4 === 3)) {
         const kickOsc = this.ctx.createOscillator();
         const kickGain = this.ctx.createGain();
         kickOsc.frequency.setValueAtTime(130, now);

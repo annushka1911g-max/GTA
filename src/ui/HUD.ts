@@ -173,13 +173,21 @@ export class HUD {
     const weaponData: Record<WeaponType, { name: string; icon: string; slot: number }> = {
       fists: { name: 'FISTS', icon: '👊', slot: 0 },
       bat: { name: 'BASEBALL BAT', icon: '🏏', slot: 1 },
-      pistol: { name: 'COLT .45', icon: '🔫', slot: 2 },
+      katana: { name: 'KATANA', icon: '⚔️', slot: 2 },
+      pistol: { name: 'COLT .45', icon: '🔫', slot: 3 },
+      shotgun: { name: 'CHROME SHOTGUN', icon: '💥', slot: 4 },
+      smg: { name: 'TEC-9', icon: '🔥', slot: 5 },
+      m4: { name: 'M4 ASSAULT', icon: '🎯', slot: 6 },
+      rpg: { name: 'RPG LAUNCHER', icon: '🚀', slot: 7 },
+      grenade: { name: 'GRENADES', icon: '💣', slot: 8 },
     };
 
     const cur = weaponData[weapon];
     this.weaponName.textContent = cur.name;
     this.weaponIcon.textContent = cur.icon;
-    this.weaponAmmo.textContent = weapon === 'pistol' ? ammo.toString() : '∞';
+
+    const meleeWeapons = ['fists', 'bat', 'katana'];
+    this.weaponAmmo.textContent = meleeWeapons.includes(weapon) ? '∞' : ammo.toString();
 
     this.weaponButtons.forEach((btn, idx) => {
       if (idx === cur.slot) {

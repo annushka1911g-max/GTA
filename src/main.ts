@@ -12,6 +12,9 @@ import { TrafficManager } from './ai/TrafficManager';
 import { PoliceSystem } from './ai/PoliceSystem';
 import { MissionManager } from './missions/MissionManager';
 import { CollectiblesManager } from './world/CollectiblesManager';
+import { ExplosionSystem } from './systems/ExplosionSystem';
+import { ProjectileSystem } from './systems/ProjectileSystem';
+import { CheatSystem } from './systems/CheatSystem';
 
 class Game {
   private canvas: HTMLCanvasElement;
@@ -32,6 +35,9 @@ class Game {
   private policeSystem: PoliceSystem;
   private missionManager: MissionManager;
   private collectiblesManager: CollectiblesManager;
+  private explosionSystem: ExplosionSystem;
+  private projectileSystem: ProjectileSystem;
+  private cheatSystem: CheatSystem;
 
   // Parked & Free Roam Vehicles
   private vehicles: Vehicle[] = [];
@@ -96,7 +102,13 @@ class Game {
     this.missionManager = new MissionManager(this.scene, this.audio, this.policeSystem);
     this.collectiblesManager = new CollectiblesManager(this.scene, this.audio);
 
-    // 11. Parked Vice City Vehicles fleet
+    // 11. Explosions, Projectiles & Cheat Codes
+    this.explosionSystem = new ExplosionSystem(this.scene, this.physics, this.audio);
+    this.projectileSystem = new ProjectileSystem(this.scene, this.explosionSystem, this.audio);
+    this.cheatSystem = new CheatSystem(this.audio);
+    this.registerReVCCheats();
+
+    // 12. Parked Vice City Vehicles fleet
     this.spawnParkedVehicles();
 
     // 12. Load Persistent Save Data
@@ -123,6 +135,11 @@ class Game {
     this.player.armor = save.armor;
     this.player.stamina = save.stamina;
     this.player.pistolAmmo = save.pistolAmmo;
+    this.player.shotgunAmmo = save.shotgunAmmo;
+    this.player.smgAmmo = save.smgAmmo;
+    this.player.m4Ammo = save.m4Ammo;
+    this.player.rpgAmmo = save.rpgAmmo;
+    this.player.grenadeCount = save.grenadeCount;
     this.player.setWeapon(save.currentWeapon);
 
     if (save.completedMissions && save.completedMissions.length > 0) {
@@ -148,6 +165,11 @@ class Game {
       activeMissionId: this.missionManager.activeMission ? this.missionManager.activeMission.id : null,
       currentWeapon: this.player.currentWeapon,
       pistolAmmo: this.player.pistolAmmo,
+      shotgunAmmo: this.player.shotgunAmmo,
+      smgAmmo: this.player.smgAmmo,
+      m4Ammo: this.player.m4Ammo,
+      rpgAmmo: this.player.rpgAmmo,
+      grenadeCount: this.player.grenadeCount,
       settings: {
         soundVolume: 0.8,
         radioVolume: 0.7,
@@ -162,17 +184,37 @@ class Game {
   }
 
   private setupCombatAndCrimeCallbacks(): void {
-    // When player punches or shoots, perform hit detection against pedestrians
+    // When player attacks, perform hit detection + projectile launches
     this.player.onAttackCallback = (pos, yaw, weapon) => {
       const hitPed = this.pedManager.handlePlayerAttack(pos, yaw, weapon);
       if (hitPed) {
-        // Attacking pedestrians generates wanted level
         this.policeSystem.addCrime(1);
-      } else if (weapon === 'pistol') {
-        // Gunfire in public attracts police attention
+      }
+
+      // Firearms attract police
+      const firearmWeapons: WeaponType[] = ['pistol', 'shotgun', 'smg', 'm4', 'rpg'];
+      if (firearmWeapons.includes(weapon)) {
         if (Math.random() < 0.4) {
           this.policeSystem.addCrime(1);
         }
+      }
+
+      // RPG: Launch rocket projectile
+      if (weapon === 'rpg') {
+        const forward = new THREE.Vector3(0, 0, -1);
+        forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+        const launchPos = pos.clone().add(new THREE.Vector3(0, 1.2, 0));
+        this.projectileSystem.launchRocket(launchPos, forward);
+        this.policeSystem.addCrime(2);
+      }
+
+      // Grenade: Throw grenade projectile
+      if (weapon === 'grenade') {
+        const forward = new THREE.Vector3(0, 0, -1);
+        forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+        const throwPos = pos.clone().add(new THREE.Vector3(0, 1.4, 0));
+        this.projectileSystem.throwGrenade(throwPos, forward);
+        this.policeSystem.addCrime(1);
       }
     };
 
@@ -318,6 +360,96 @@ class Game {
     // 4. Kaufman Cab in commercial district
     const v5 = new Vehicle(this.scene, this.physics, this.audio, configs.taxi, new THREE.Vector3(-50, 0.5, -60), Math.PI);
     this.vehicles.push(v5);
+
+    // 5. Extra Infernus at Washington Beach
+    const v6 = new Vehicle(this.scene, this.physics, this.audio, configs.infernus, new THREE.Vector3(-20, 0.5, 80), Math.PI / 4);
+    this.vehicles.push(v6);
+
+    // 6. Cheetah at the Marina Docks
+    const v7 = new Vehicle(this.scene, this.physics, this.audio, configs.cheetah, new THREE.Vector3(-160, 0.5, 120), -Math.PI / 3);
+    this.vehicles.push(v7);
+
+    // 7. Police cruiser near VCPD Station
+    const v8 = new Vehicle(this.scene, this.physics, this.audio, configs.police, new THREE.Vector3(-25, 0.5, 35), 0);
+    this.vehicles.push(v8);
+
+    // 8. Another taxi uptown
+    const v9 = new Vehicle(this.scene, this.physics, this.audio, configs.taxi, new THREE.Vector3(40, 0.5, -120), Math.PI / 2);
+    this.vehicles.push(v9);
+  }
+
+  private registerReVCCheats(): void {
+    // Health & Armor
+    this.cheatSystem.registerCheat('ASPIRINE', 'FULL HEALTH', 'Health restored to maximum', () => {
+      this.player.health = 100;
+    });
+
+    this.cheatSystem.registerCheat('PRECIOUSPROTECTION', 'FULL ARMOR', 'Body armor fully equipped', () => {
+      this.player.armor = 100;
+    });
+
+    // Weapon Tier Cheats
+    this.cheatSystem.registerCheat('THUGSTOOLS', 'THUG WEAPONS', 'Bat + Pistol + Shotgun equipped', () => {
+      this.player.pistolAmmo += 100;
+      this.player.shotgunAmmo += 50;
+      this.player.setWeapon('shotgun');
+    });
+
+    this.cheatSystem.registerCheat('PROFESSIONALTOOLS', 'PRO WEAPONS', 'Katana + SMG + M4 equipped', () => {
+      this.player.smgAmmo += 200;
+      this.player.m4Ammo += 200;
+      this.player.setWeapon('m4');
+    });
+
+    this.cheatSystem.registerCheat('NUTTERTOOLS', 'HEAVY WEAPONS', 'RPG + Grenades equipped', () => {
+      this.player.rpgAmmo += 20;
+      this.player.grenadeCount += 15;
+      this.player.setWeapon('rpg');
+    });
+
+    // Wanted Level
+    this.cheatSystem.registerCheat('YOUWONTTAKEMEALIVE', 'RAISE WANTED', 'Wanted level +2 stars', () => {
+      this.policeSystem.addCrime(2);
+    });
+
+    this.cheatSystem.registerCheat('LEAVEMEALONE', 'CLEAR WANTED', 'All wanted stars removed', () => {
+      this.policeSystem.clearWanted();
+    });
+
+    // Money
+    this.cheatSystem.registerCheat('PANZER', 'BIG MONEY', '+$50,000 cash', () => {
+      this.cash += 50000;
+      this.hud.setCash(this.cash);
+    });
+
+    this.cheatSystem.registerCheat('BIGBANG', 'BIG BANG', 'Nearby vehicles explode!', () => {
+      const playerPos = this.player.getPosition();
+      for (const v of this.vehicles) {
+        const vPos = new THREE.Vector3(v.chassisBody.position.x, v.chassisBody.position.y, v.chassisBody.position.z);
+        if (vPos.distanceTo(playerPos) < 40) {
+          this.explosionSystem.createExplosion(vPos, 12, 2500, 80);
+        }
+      }
+    });
+
+    // Speed boost
+    this.cheatSystem.registerCheat('ONSPEED', 'SPEED BOOST', 'Game feels faster!', () => {
+      this.dayNight.timeSpeed *= 2;
+    });
+
+    // Weather / Atmosphere
+    this.cheatSystem.registerCheat('ALOVELYDAY', 'SUNNY WEATHER', 'Perfect sunny Vice City day', () => {
+      this.dayNight.setTime(12);
+    });
+
+    this.cheatSystem.registerCheat('CATSANDDOGS', 'DARK STORM', 'Night atmosphere activated', () => {
+      this.dayNight.setTime(23);
+    });
+
+    // Cheat notification callback
+    this.cheatSystem.setOnCheatActivated((name, desc) => {
+      this.hud.showToast(`🎮 CHEAT ACTIVATED: ${name} — ${desc}`, 3500);
+    });
   }
 
   private setupInputs(): void {
@@ -352,10 +484,16 @@ class Game {
         this.player.isJumping = true;
       }
 
-      // Weapons Quick Switch: 1 (Fists), 2 (Bat), 3 (Pistol)
+      // Weapons Quick Switch: 1-9 full arsenal
       if (e.code === 'Digit1') this.player.setWeapon('fists');
       if (e.code === 'Digit2') this.player.setWeapon('bat');
-      if (e.code === 'Digit3') this.player.setWeapon('pistol');
+      if (e.code === 'Digit3') this.player.setWeapon('katana');
+      if (e.code === 'Digit4') this.player.setWeapon('pistol');
+      if (e.code === 'Digit5') this.player.setWeapon('shotgun');
+      if (e.code === 'Digit6') this.player.setWeapon('smg');
+      if (e.code === 'Digit7') this.player.setWeapon('m4');
+      if (e.code === 'Digit8') this.player.setWeapon('rpg');
+      if (e.code === 'Digit9') this.player.setWeapon('grenade');
 
       // C: Cycle camera distance
       if (e.code === 'KeyC') {
@@ -406,7 +544,7 @@ class Game {
 
     // Mouse wheel weapon switch
     window.addEventListener('wheel', (e) => {
-      const weapons: WeaponType[] = ['fists', 'bat', 'pistol'];
+      const weapons: WeaponType[] = ['fists', 'bat', 'katana', 'pistol', 'shotgun', 'smg', 'm4', 'rpg', 'grenade'];
       let idx = weapons.indexOf(this.player.currentWeapon);
       if (e.deltaY > 0) {
         idx = (idx + 1) % weapons.length;
@@ -556,11 +694,13 @@ class Game {
 
     // Weapon switcher buttons
     const weaponButtons = document.querySelectorAll('.weapon-switcher .weapon-btn');
-    const weapons: WeaponType[] = ['fists', 'bat', 'pistol'];
+    const weapons: WeaponType[] = ['fists', 'bat', 'katana', 'pistol', 'shotgun', 'smg', 'm4', 'rpg', 'grenade'];
     weaponButtons.forEach((btn, idx) => {
-      btn.addEventListener('click', () => {
-        this.player.setWeapon(weapons[idx]);
-      });
+      if (idx < weapons.length) {
+        btn.addEventListener('click', () => {
+          this.player.setWeapon(weapons[idx]);
+        });
+      }
     });
   }
 
@@ -655,6 +795,17 @@ class Game {
     // 5. Player update
     this.player.update(deltaTime);
     const playerPos = this.player.getPosition();
+
+    // 5b. Explosions & Projectiles
+    this.explosionSystem.update(deltaTime);
+    this.projectileSystem.update(deltaTime);
+
+    // 5c. Camera Shake from Explosions
+    if (this.explosionSystem.cameraShake > 0.01) {
+      const shakeAmt = this.explosionSystem.cameraShake * 0.15;
+      this.camera.position.x += (Math.random() - 0.5) * shakeAmt;
+      this.camera.position.y += (Math.random() - 0.5) * shakeAmt;
+    }
 
     // 6. AI Systems (Pedestrians, Traffic, Police)
     this.pedManager.update(deltaTime, playerPos);
